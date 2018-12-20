@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<style>
+    body,html {
+        position: fixed;
+        top: 0px;
+        bottom: 0px;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+    }
+</style>
+<body>
+    <canvas id="c1"  style="background: transparent;position: absolute;left: 0;top:0;z-index: 3;">
+        <span>不支持canvas浏览器</span>
+    </canvas> 
+    <canvas id="c2"  style="background: transparent;position: absolute;left: 0;top:0;z-index: 2;">
+        <span>不支持canvas浏览器</span>
+    </canvas> 
+    <canvas id="c3"  style="background: transparent;position: absolute;left: 0;top:0;z-index: 2;">
+        <span>不支持canvas浏览器</span>
+    </canvas> 
+    <canvas id="c4"  style="background: transparent;position: absolute;left: 0;top:0;z-index: 2;">
+        <span>不支持canvas浏览器</span>
+    </canvas> 
+    <canvas id="c5"   style="background: #ddd;position: absolute;left: 0;top:0;">
+        <span>不支持canvas浏览器</span>
+    </canvas> 
+</body>
+<script>
+// document.body.addEventListener("touchmove",function(event){
+// 　　event.preventDefault();
+// });
+document.body.style.overflow='hidden'
+const Rotate = function(Source,Angle){//Angle为正时逆时针转动, 单位为弧度
+    var A,R;
+    A = Math.atan2(Source.Y,Source.X)//atan2自带坐标系识别, 注意X,Y的顺序
+    A += Angle//旋转
+    R = Math.sqrt(Source.X * Source.X + Source.Y * Source.Y)//半径
+    return {
+        X : Math.cos(A) * R,
+        Y : Math.sin(A) * R
+    }
+}
+
+const xx = function(x,y,bx,by,bx2,by2,r){
+    return {
+        x : Rotate({X : x-bx,Y : y-by},Math.PI*2 * r / 5).X+bx2,
+        y : Rotate({X : x-bx,Y : y-by},Math.PI*2 * r / 5).Y+by2
+    }
+}
+let isDown = false;
+let points = [];
+let beginPoint = [];
+let canvas = [];
+let ctx = [];
+for(let i = 0; i < 5; i++){
+    points.push([]);
+    beginPoint.push(null);
+    canvas.push(document.querySelector('#c'+(i+1)))
+    canvas[i].width  = window.innerWidth;
+    canvas[i].height  = window.innerHeight;
+    ctx.push(canvas[i].getContext('2d'))
+    ctx[i].lineWidth = 5;
+    ctx[i].lineJoin = 'round';
+    ctx[i].lineCap = 'round';
+}
+ 
+canvas[0].addEventListener('mousedown', down, false);
+canvas[0].addEventListener('mousemove', move, false);
+canvas[0].addEventListener('mouseup', up, false);
+canvas[0].addEventListener('mouseout', up, false);
+
+canvas[0].addEventListener('touchstart', down, false);
+canvas[0].addEventListener('touchmove', move, false);
+canvas[0].addEventListener('touchend', up, false);
+ 
+function down(evt) {
+    isDown = true;
+    const { x, y } = getPos(evt);
+    for(let i = 0; i < points.length; i++){
+        points[i].push({x, y});
+        beginPoint[i] = {x, y};
+    }
+}
+ 
+function move(evt) {
+    if (!isDown) return;
+ 
+    const { x, y } = getPos(evt);
+    for(let i = 0; i < points.length; i++){
+        if (i == 0){
+            points[i].push({x, y});
+        }else{
+            points[i].push(xx(x,y,beginPoint[0].x,beginPoint[0].y,beginPoint[i].x,beginPoint[i].y,i));
+        }
+    }
+    if (points.length > 3) {
+        const lastTwoPoints = [];
+        const controlPoint = [];
+        const endPoint = [];
+        for(let i = 0; i < points.length; i++){
+            lastTwoPoints.push(points[i].slice(-2));
+            controlPoint.push(lastTwoPoints[i][0]);
+            endPoint.push({
+                x: (lastTwoPoints[i][0].x + lastTwoPoints[i][1].x) / 2,
+                y: (lastTwoPoints[i][0].y + lastTwoPoints[i][1].y) / 2,
+            })
+        }
+        drawLine(beginPoint,controlPoint,endPoint);
+        for(let i = 0; i < points.length; i++){
+            beginPoint[i] = endPoint[i];
+        }
+    }
+}
+ 
+function up(evt) {
+    if (!isDown) return;
+    const { x, y } = getPos(evt);
+    for(let i = 0; i < points.length; i++){
+        if (i == 0){
+            points[i].push({x, y});
+        }else{
+            points[i].push(xx(x,y,beginPoint[0].x,beginPoint[0].y,beginPoint[i].x,beginPoint[i].y,i));
+        }
+    }
+    if (points.length > 3) {
+        const lastTwoPoints = [];
+        const controlPoint = [];
+        const endPoint = [];
+        for(let i = 0; i < points.length; i++){
+            lastTwoPoints.push(points[i].slice(-2));
+            controlPoint.push(lastTwoPoints[i][0]);
+            endPoint.push(lastTwoPoints[i][1])
+        }
+        drawLine(beginPoint,controlPoint,endPoint);
+    }
+    for(let i = 0; i < points.length; i++){
+        beginPoint[i] = null;
+        points[i] = [];
+    }
+    isDown = false;
+}
+ 
+function getPos(evt) {
+    return {
+        x: evt.clientX,
+        y: evt.clientY
+    }
+}
+ 
+function drawLine(beginPoint,controlPoint,endPoint) {
+    for(let i = 0; i < points.length; i++){
+        ctx[i].beginPath();
+        ctx[i].moveTo(beginPoint[i].x, beginPoint[i].y);
+        ctx[i].quadraticCurveTo(controlPoint[i].x,controlPoint[i].y,endPoint[i].x,endPoint[i].y);
+        ctx[i].stroke();
+        ctx[i].closePath();
+    }
+}
+</script>
+</html>
